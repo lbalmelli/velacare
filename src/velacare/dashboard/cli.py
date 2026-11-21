@@ -15,6 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--host", default="127.0.0.1", help="interface to bind (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8050, help="port to bind (default: 8050)")
     parser.add_argument("--base-path", default="/", help="URL base path for ingress, such as /research/")
+    parser.add_argument("--activation-mode", choices=("disabled", "mock"), default="disabled", help="workspace activation adapter; mock is simulated and disabled by default")
     parser.add_argument("--debug", action="store_true", help="enable Dash debug mode")
     return parser
 
@@ -38,6 +39,6 @@ def main(argv: list[str] | None = None) -> int:
         base = "/" + base
     if not base.endswith("/"):
         base += "/"
-    app = create_app(root, base_path=base)
+    app = create_app(root, base_path=base, initial_snapshot=snapshot, activation_mode=args.activation_mode)
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-startup-shell="offline">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1422">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VelaCare">
+  <meta name="velacare-base-path" content="__VELACARE_BASE_PATH__">
+  <base href="__VELACARE_BASE_PATH__">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="pwa/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="pwa/icons/icon-192.png">
+  <link rel="stylesheet" href="pwa/startup.v1.css">
+  <title>VelaCare Data Explorer</title>
+</head>
+<body class="startup-shell-body">
+  <main id="startup-screen" class="startup-screen" data-state="connecting" aria-labelledby="startup-heading">
+    <section class="startup-card">
+      <img class="startup-logo" src="pwa/icons/icon-192.png" alt="">
+      <div class="startup-brand">VELACARE DATA EXPLORER</div>
+      <h1 id="startup-heading">Connecting to VelaCare</h1>
+      <p id="startup-detail" class="startup-detail" role="status" aria-live="polite" aria-atomic="true">Checking dashboard and workspace availability…</p>
+      <p id="startup-simulated" class="startup-simulated" aria-live="polite"></p>
+      <div id="startup-spinner" class="startup-spinner" aria-hidden="true"></div>
+      <div class="startup-actions">
+        <button id="startup-retry" class="startup-button" type="button" hidden>Retry</button>
+        <button id="startup-demo-start" class="startup-button secondary" type="button" hidden>Simulate workspace start</button>
+      </div>
+      <p class="startup-footnote">Research demonstration · Not clinically validated</p>
+    </section>
+  </main>
+  <script defer src="pwa/startup.v1.js"></script>
+</body>
+</html>
