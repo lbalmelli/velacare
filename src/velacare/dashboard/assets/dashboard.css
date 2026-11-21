@@ -72,6 +72,13 @@ button, input { font: inherit; }
 .panel-heading h2, .panel h2 { margin: 0; color: #d6e1ed; font-family: var(--font-display); font-size: 13px; letter-spacing: .01em; }
 .section-note { color: #879bb1; margin: 5px 0 0; font-size: 11px; line-height: 1.55; }
 .plot { width: 100%; }
+.panel.has-zoom-controls { position: relative; }
+.panel.has-zoom-controls .panel-heading { padding-right: 94px; }
+.panel.has-zoom-controls .modebar-container { top: -50px !important; right: 0 !important; }
+.zoomable-plot .modebar, .zoomable-plot .modebar-group, .zoomable-plot .modebar-btn { background: transparent !important; }
+.zoomable-plot .modebar-btn { color: #f4f8fc !important; opacity: 1 !important; }
+.zoomable-plot .modebar-btn path { fill: #f4f8fc !important; }
+.zoomable-plot .modebar-btn:hover { background: rgba(255,255,255,.08) !important; }
 .overview-top-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(270px, .95fr); gap: 17px; align-items: stretch; }
 .overview-top-grid > .panel:first-child { min-height: 340px; }
 .overview-side { display: grid; grid-template-rows: minmax(0, 1fr) minmax(130px, .8fr); gap: 13px; }

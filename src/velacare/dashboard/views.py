@@ -31,12 +31,30 @@ _PLOT_LAYOUT: dict[str, Any] = {
     "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.02, "x": 0, "font": {"color": "#c4d0df"}},
     "hoverlabel": {"bgcolor": "#172c43", "bordercolor": LINE, "font": {"color": WHITE}},
 }
+_PLOT_MODEBAR_BUTTONS = [["zoomIn2d", "zoomOut2d", "autoScale2d"]]
 
 
-def _graph(figure: go.Figure, *, height: int = 320, class_name: str = "plot", graph_id: Any = None) -> dcc.Graph:
+def _graph(
+    figure: go.Figure,
+    *,
+    height: int = 320,
+    class_name: str = "plot",
+    graph_id: Any = None,
+    zoomable: bool = False,
+) -> dcc.Graph:
     figure.update_layout(**_PLOT_LAYOUT, height=height, autosize=True)
-    props: dict[str, Any] = {"figure": figure, "config": {"displayModeBar": False, "responsive": True},
-                             "className": class_name, "style": {"height": f"{height}px"}}
+    if zoomable:
+        figure.update_layout(margin={"t": 64})
+        class_name = f"{class_name} zoomable-plot"
+    config: dict[str, Any] = {"displayModeBar": zoomable, "responsive": True}
+    if zoomable:
+        config.update({"modeBarButtons": _PLOT_MODEBAR_BUTTONS, "displaylogo": False})
+    props: dict[str, Any] = {
+        "figure": figure,
+        "config": config,
+        "className": class_name,
+        "style": {"height": f"{height}px"},
+    }
     if graph_id is not None:
         props["id"] = graph_id
     return dcc.Graph(**props)
@@ -46,6 +64,8 @@ def _section(title: str, child: Any, subtitle: str | None = None, *, class_name:
     head: list[Any] = [html.H2(title)]
     if subtitle:
         head.append(html.P(subtitle, className="section-note"))
+    if isinstance(child, dcc.Graph) and "zoomable-plot" in (child.className or ""):
+        class_name = f"{class_name} has-zoom-controls"
     return html.Section([html.Div(head, className="panel-heading"), child], className=class_name)
 
 
@@ -195,7 +215,7 @@ def overview_view(run: RunData, generation: GenerationData, selected_candidate: 
     ], className="metadata-grid")
     selected_details = html.Div([html.H3("Selected features"), _feature_list(best_names), html.P(f"Composite fitness score: {_score(best['fitness'])}. This is an optimization score, not clinical accuracy or sensitivity.", className="science-note")], className="panel")
     return [
-        html.Div([_section("Evolution across generations", _graph(_fitness_trend(run, generation.number, include_summary=False), height=280), "Best and mean composite fitness · the vertical marker follows the shared generation control."), detail], className="overview-top-grid"),
+        html.Div([_section("Evolution across generations", _graph(_fitness_trend(run, generation.number, include_summary=False), height=280, zoomable=True), "Best and mean composite fitness · the vertical marker follows the shared generation control."), detail], className="overview-top-grid"),
         cards,
         html.Div([selected_details, _section("Reproducibility", metadata, "Captured from the selected run manifest.")], className="two-column-grid"),
         html.Div([html.Span("Reading"), html.Code(str(run.path / "generation_history.csv")), html.Span(f"{len(generation.candidates)} complete candidate records reconstructed for generation {generation.number}.")], className="source-line"),
@@ -291,11 +311,11 @@ def evolution_view(run: RunData, generation: GenerationData, selected: dict[str,
             _metric("Median fitness", _score(generation.summary["median_fitness"]), "saved full population"),
             _metric("Minimum fitness", _score(generation.summary["min_fitness"]), "saved full population"),
         ]),
-        html.Div([_section("Fitness distribution", _graph(histogram), f"All {len(generation.candidates)} persisted candidates in generation {generation.number}."),
+        html.Div([_section("Fitness distribution", _graph(histogram, zoomable=True), f"All {len(generation.candidates)} persisted candidates in generation {generation.number}."),
                   candidate_detail], className="two-column-grid evolution-grid"),
-        html.Div([_section("Fitness through time", _graph(_fitness_trend(run, generation.number), height=340), "Best, mean, median and minimum fitness are reconstructed for each committed generation."),
-                  _section("Selected-feature count", _graph(_feature_count_trend(run, generation.number), height=340), "Best-candidate and population-mean feature counts for every committed generation."),
-                  _section("Population diversity", _graph(_diversity_trend(run, generation.number), height=340), "Unique-mask ratio and mean pairwise Hamming distance ÷ 30, computed from all saved chromosomes.")], className="two-column-grid"),
+        html.Div([_section("Fitness through time", _graph(_fitness_trend(run, generation.number), height=340, zoomable=True), "Best, mean, median and minimum fitness are reconstructed for each committed generation."),
+                  _section("Selected-feature count", _graph(_feature_count_trend(run, generation.number), height=340, zoomable=True), "Best-candidate and population-mean feature counts for every committed generation."),
+                  _section("Population diversity", _graph(_diversity_trend(run, generation.number), height=340, zoomable=True), "Unique-mask ratio and mean pairwise Hamming distance ÷ 30, computed from all saved chromosomes.")], className="two-column-grid"),
         _section("Complete candidate population", _candidate_table(generation, selected["candidate_id"]), "Every persisted candidate is shown; table sorting and filtering change presentation only."),
         _section("Compare two candidates", comparison, "Selection uses stored CV fitness, crossover, mutation and elitism only where the saved operator/parent fields describe them."),
     ]
@@ -382,10 +402,10 @@ def feature_view(run: RunData, generation: GenerationData, selected: dict[str, A
         comparison = _empty("Candidate comparison", "Choose another candidate from this generation using the comparison control.")
     return [
         html.Div([_metric("Feature columns", "30", "canonical UCI WDBC feature order"), _metric("Population snapshots", str(len(generation.candidates)), "all candidates in selected generation"), _metric("Committed generations", str(run.committed_generation), "no sampling")], className="metric-grid"),
-        _section("Best candidate · full history", _graph(_best_matrix(run), height=max(410, 150 + 17 * len(generations)), class_name="plot heatmap-plot", graph_id={"type": "history-heatmap", "index": "best"}), "Generation × 30 mask. Select any row to move the shared generation control; hover cells for feature and state."),
-        _section(f"Population matrix · generation {generation.number}", _graph(_population_matrix(run, generation, selected["candidate_id"]), height=max(400, 180 + 17 * len(generation.candidates)), class_name="plot heatmap-plot", graph_id={"type": "population-heatmap", "index": "population"}), "Candidate × 30 mask, with all persisted candidates. Click a row to select the candidate and update the inspector."),
-        html.Div([_section("Feature-selection frequency", _graph(frequency, height=max(390, 150 + 17 * len(generations)), class_name="plot heatmap-plot"), "Share of candidates selecting each feature in each complete generation."), _section("Feature ranking", ranking_table, "Ranking uses candidate frequency, not diagnostic importance.")], className="two-column-grid"),
-        html.Div([_section("Selected-feature count distribution", _graph(counts), "All candidates in the selected generation."), _section("Population diversity", _graph(d, height=320), "Unique chromosome ratio and mean pairwise Hamming distance divided by 30; both are computed from persisted chromosomes.")], className="two-column-grid"),
+        _section("Best candidate · full history", _graph(_best_matrix(run), height=max(410, 150 + 17 * len(generations)), class_name="plot heatmap-plot", graph_id={"type": "history-heatmap", "index": "best"}, zoomable=True), "Generation × 30 mask. Select any row to move the shared generation control; hover cells for feature and state."),
+        _section(f"Population matrix · generation {generation.number}", _graph(_population_matrix(run, generation, selected["candidate_id"]), height=max(400, 180 + 17 * len(generation.candidates)), class_name="plot heatmap-plot", graph_id={"type": "population-heatmap", "index": "population"}, zoomable=True), "Candidate × 30 mask, with all persisted candidates. Click a row to select the candidate and update the inspector."),
+        html.Div([_section("Feature-selection frequency", _graph(frequency, height=max(390, 150 + 17 * len(generations)), class_name="plot heatmap-plot", zoomable=True), "Share of candidates selecting each feature in each complete generation."), _section("Feature ranking", ranking_table, "Ranking uses candidate frequency, not diagnostic importance.")], className="two-column-grid"),
+        html.Div([_section("Selected-feature count distribution", _graph(counts, zoomable=True), "All candidates in the selected generation."), _section("Population diversity", _graph(d, height=320, zoomable=True), "Unique chromosome ratio and mean pairwise Hamming distance divided by 30; both are computed from persisted chromosomes.")], className="two-column-grid"),
         _section("Compare candidate masks", comparison, "Algorithmic mask changes describe selection among measured inputs, not biological cancer mutations."),
         html.P("Feature frequencies and masks are algorithmic feature-selection records. They do not describe biological mutations or causal mechanisms.", className="science-note strong-note"),
     ]
@@ -498,7 +518,7 @@ def dataset_view(dataset: DatasetData | None, error: str | None) -> list[Any]:
         html.Div([html.H3("Dataset provenance"), html.P("Source: UCI Machine Learning Repository, Breast Cancer Wisconsin (Diagnostic), dataset ID 17."), html.P(f"Attribution: {meta.get('attribution', 'not available in dataset metadata')} · License: {meta.get('license', 'not available in dataset metadata')} · DOI: {meta.get('doi', 'not available in dataset metadata')}"), html.P(f"SHA-256: {meta.get('sha256', 'not available in dataset metadata')}")], className="panel provenance-copy"),
         _section("Class distribution", html.Div([_metric("Malignant", str(counts["malignant"]), "positive class"), _metric("Benign", str(counts["benign"]), "negative class")], className="metric-grid"), "Original diagnostic labels; benign = 0, malignant = 1 in the GA manifest."),
         _section("Feature definitions and descriptive statistics", stats_table, "Feature names follow the canonical dataset order. Units are not documented in the provided dataset metadata."),
-        _section("Pairwise correlations", _graph(corrfig, height=860, class_name="plot heatmap-plot"), "Pearson correlation across locally stored numerical measurements."),
+        _section("Pairwise correlations", _graph(corrfig, height=860, class_name="plot heatmap-plot", zoomable=True), "Pearson correlation across locally stored numerical measurements."),
         _section("Browse dataset rows", table, "Search, sort and page through the local CSV. Dashboard access never downloads or synchronizes data."),
     ]
 
@@ -564,7 +584,7 @@ def compare_view(workspace: WorkspaceData, run_a_id: str | None, run_b_id: str |
     time_b = _time_to_best(b)
     return [
         warning,
-        _section("Fitness history", _graph(fig, height=370), f"{a.run_id}: {len(generations_a)} committed generations, seed {a.manifest.get('parameters', {}).get('seed', 'not available')}. {b.run_id}: {len(generations_b)} committed generations, seed {b.manifest.get('parameters', {}).get('seed', 'not available')}.") ,
+        _section("Fitness history", _graph(fig, height=370, zoomable=True), f"{a.run_id}: {len(generations_a)} committed generations, seed {a.manifest.get('parameters', {}).get('seed', 'not available')}. {b.run_id}: {len(generations_b)} committed generations, seed {b.manifest.get('parameters', {}).get('seed', 'not available')}.") ,
         _metric_grid([
             _metric("Best-mask overlap", f"{overlap} features", "selected in both runs"),
             _metric("Jaccard similarity", f"{jaccard:.1%}", f"intersection ÷ {union} features in either mask"),

@@ -29,3 +29,30 @@ def test_dashboard_supports_configured_base_path(tmp_path):
     assert client.get("/research/").status_code == 200
     assert client.get("/research/_dash-layout").status_code == 200
     assert client.get("/research/assets/dashboard.css").status_code == 200
+
+
+def test_dashboard_graphs_have_zoom_and_full_data_reset_controls():
+    pytest.importorskip("dash")
+    import plotly.graph_objects as go
+
+    from velacare.dashboard.views import _graph, _section
+
+    graph = _graph(go.Figure(), zoomable=True)
+    config = graph.to_plotly_json()["props"]["config"]
+    assert config["displayModeBar"] is True
+    assert config["modeBarButtons"] == [["zoomIn2d", "zoomOut2d", "autoScale2d"]]
+    assert "zoomable-plot" in graph.to_plotly_json()["props"]["className"]
+    assert "has-zoom-controls" in _section("Zoomable", graph).className
+
+
+def test_non_zoomable_dashboard_graphs_hide_the_modebar():
+    pytest.importorskip("dash")
+    import plotly.graph_objects as go
+
+    from velacare.dashboard.views import _graph, _section
+
+    graph = _graph(go.Figure())
+    props = graph.to_plotly_json()["props"]
+    assert props["config"]["displayModeBar"] is False
+    assert "zoomable-plot" not in props["className"]
+    assert "has-zoom-controls" not in _section("Static", graph).className
