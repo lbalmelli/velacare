@@ -222,5 +222,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Local VelaCare dataset cache and experiment history
+# Local shared workspace: dataset cache, GA experiment artifacts, and reports
 /agentic-space/
