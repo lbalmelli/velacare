@@ -117,3 +117,23 @@ python3 -m venv .venv
 Tests exercise dataset validation and feature ordering, label mapping, genetic operators, deterministic seeded evolution, elitism, exact chromosome/name reconstruction, full candidate histories, CV/test metric separation, interrupted-generation visibility, and no-color TUI output. The end-to-end history test reconstructs every small-run generation from its saved files.
 
 Dataset attribution: Wolberg, Mangasarian, Street, and Street (1993), *Breast Cancer Wisconsin (Diagnostic)*, UCI Machine Learning Repository, DOI [10.24432/C5DW2B](https://doi.org/10.24432/C5DW2B), licensed CC BY 4.0.
+
+<!-- VELACARE_DASHBOARD_DOCS_START -->
+
+## VelaCare Data Explorer and OpenCode reporting
+
+The genetic Evolution Engine runs through `./run-demo`, using data in `./agentic-space/`.
+
+### Run the dashboard
+
+See the [dashboard setup guide](docs/DASHBOARD_SETUP.md), then run:
+
+```bash
+./run-dashboard --workspace ./agentic-space --host 127.0.0.1 --port 8050
+```
+
+- **OpenCode Report Agent:** [install, configure, and generate VelaCare PowerPoint reports](docs/OPENCODE_SETUP.md).
+
+The Coding Agent, Data Explorer and Report Agent share the **same `./agentic-space/` filesystem**. No file export or synchronization between them is required.
+
+<!-- VELACARE_DASHBOARD_DOCS_END -->

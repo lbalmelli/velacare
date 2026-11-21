@@ -14,11 +14,25 @@ dependencies = [
   "rich>=13,<15",
 ]
 
+[project.optional-dependencies]
+dashboard = [
+  "dash>=2.18,<4",
+  "plotly>=5.24,<7",
+]
+report = [
+  "matplotlib>=3.8,<4",
+  "python-pptx>=1.0,<2",
+]
+
 [project.scripts]
 velacare-evolution = "velacare.cli:main"
+velacare-dashboard = "velacare.dashboard.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"velacare.dashboard" = ["assets/*.css", "assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
