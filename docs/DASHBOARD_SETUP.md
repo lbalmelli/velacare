@@ -42,6 +42,12 @@ Open `http://127.0.0.1:8050` in a browser. `--workspace /agentic-space` selects 
 
 For an ingress that preserves a URL prefix, add `--base-path /research/` and route that prefix to the dashboard process.
 
+The server exposes minimal `GET /health/live` and `GET /health/ready` routes (under the configured base path). Readiness stays healthy when the experiment directory is empty; it becomes unavailable if initialization fails or the configured workspace cannot be accessed. The routes return a VelaCare service marker for local process checks and omit absolute paths and artifact contents. A production gateway should decide whether to expose these anonymous health checks publicly or restrict them to its own probes.
+
+The optional startup activation adapter is disabled by default and does not make network requests. `--activation-mode mock` opts into a local, simulated state machine for UI demonstrations; it does not wake a real workspace. See the [ChromeOS and PWA setup guide](PWA_CHROMEOS_SETUP.md) for the adapter boundary and deployment limits.
+
+For the repeatable online, offline-shell, and retry recovery check, follow [Verify the PWA](PWA_CHROMEOS_SETUP.md#verify-the-pwa).
+
 The initial view is **Overview**. The permanent navigation provides Overview, Evolution, Feature Selection, Model Evaluation, Dataset and Compare Runs. The run, numeric generation input and slider are synchronized with candidate selection. Click a row in the history or population heatmap to change the shared generation or candidate. All values come from persisted run records, not the illustrative screenshots.
 
 The Evolution page shows every candidate in the selected generation, the fitness distribution, full record table, stored CV components, parent/operator metadata and a chromosome comparison. Feature Selection includes a best-candidate matrix for every committed generation, a complete candidate × feature matrix for the selected generation, frequency heatmaps and diversity computed from stored chromosomes.

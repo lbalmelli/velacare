@@ -32,7 +32,7 @@ velacare-dashboard = "velacare.dashboard.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"velacare.dashboard" = ["assets/*.css", "assets/*.png"]
+"velacare.dashboard" = ["assets/*.css", "assets/*.png", "pwa/*", "pwa/icons/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

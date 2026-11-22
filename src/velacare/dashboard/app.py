@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 from dash import ALL, Dash, Input, Output, State, ctx, dcc, html
+from flask import jsonify, make_response, request, send_file, send_from_directory
 
+from .activation import (
+    ActivationProvider,
+    ActivationState,
+    ActivationStatus,
+    MockActivationProvider,
+    activation_provider_for_mode,
+)
 from .data import WorkspaceData, load_workspace
 from .views import render_view
 
@@ -58,7 +67,24 @@ def _other_candidate(candidates: Any, selected_id: str | None) -> str | None:
     return (different or fallback or selected or {}).get("candidate_id")
 
 
-def _layout(snapshot: WorkspaceData) -> html.Div:
+def _startup_screen(base_path: str) -> html.Div:
+    return html.Div([
+        html.Div([
+            html.Img(src=f"{base_path}pwa/icons/icon-192.png", alt="", className="startup-logo"),
+            html.Div("VELACARE DATA EXPLORER", className="startup-brand"),
+            html.H1("Connecting to VelaCare", id="startup-heading"),
+            html.P("Checking dashboard and workspace availability…", id="startup-detail", className="startup-detail", role="status", **{"aria-live": "polite", "aria-atomic": "true"}),
+            html.P("", id="startup-simulated", className="startup-simulated", **{"aria-live": "polite"}),
+            html.Div(className="startup-spinner", id="startup-spinner", **{"aria-hidden": "true"}),
+            html.Div([
+                html.Button("Retry", id="startup-retry", className="startup-button", type="button", hidden=True),
+                html.Button("Simulate workspace start", id="startup-demo-start", className="startup-button secondary", type="button", hidden=True),
+            ], className="startup-actions"),
+        ], className="startup-card"),
+    ], id="startup-screen", className="startup-screen", role="region", **{"aria-labelledby": "startup-heading", "data-state": "connecting"})
+
+
+def _layout(snapshot: WorkspaceData, base_path: str = "/") -> html.Div:
     run_id, generation, candidate_id, compare_a, compare_b = _initial_controls(snapshot)
     run = snapshot.runs.get(run_id or "")
     max_generation = max(1, run.committed_generation if run else 1)
@@ -72,6 +98,7 @@ def _layout(snapshot: WorkspaceData) -> html.Div:
     compare_options = [{"label": run_id, "value": run_id} for run_id in sorted(snapshot.runs)]
     refresh = bool(run and run.status == "running")
     return html.Div([
+        _startup_screen(base_path),
         dcc.Store(id="active-view", data="overview"),
         dcc.Store(id="generation-click-store"),
         dcc.Store(id="candidate-click-store"),
@@ -105,12 +132,29 @@ def _layout(snapshot: WorkspaceData) -> html.Div:
     ], className="app-root")
 
 
-def create_app(workspace: Path | str, *, base_path: str = "/") -> Dash:
+def create_app(
+    workspace: Path | str,
+    *,
+    base_path: str = "/",
+    initial_snapshot: WorkspaceData | None = None,
+    activation_provider: ActivationProvider | None = None,
+    activation_mode: str = "disabled",
+) -> Dash:
     root = Path(workspace).expanduser().resolve()
-    if not base_path.startswith("/"):
-        base_path = "/" + base_path
-    if not base_path.endswith("/"):
-        base_path += "/"
+    base_path = "/" + base_path.strip("/") + "/" if base_path.strip("/") else "/"
+    route_prefix = base_path.rstrip("/")
+    pwa_dir = Path(__file__).parent / "pwa"
+    provider = activation_provider or activation_provider_for_mode(activation_mode)
+    readiness: dict[str, Any] = {"initialized": False, "initialization_error": False}
+    try:
+        snapshot = initial_snapshot if initial_snapshot is not None else load_workspace(root)
+        readiness["initialized"] = True
+        readiness["dataset_status"] = "available" if snapshot.dataset is not None else "missing"
+        readiness["experiments_status"] = "available" if snapshot.runs or snapshot.errors else "empty"
+    except Exception:
+        snapshot = WorkspaceData(root, {}, {}, None, None, "Dashboard initialization failed.")
+        readiness["initialization_error"] = True
+
     app = Dash(
         __name__,
         title="VelaCare Data Explorer",
@@ -120,7 +164,115 @@ def create_app(workspace: Path | str, *, base_path: str = "/") -> Dash:
         suppress_callback_exceptions=True,
         update_title=None,
     )
-    app.layout = lambda: _layout(load_workspace(root))
+    app.layout = _layout(snapshot, base_path)
+    app.server.extensions["velacare_readiness"] = readiness
+    app.server.extensions["velacare_activation_provider"] = provider
+    app.index_string = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    {{%metas%}}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1422">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VelaCare">
+    <meta name="velacare-base-path" content="{base_path}">
+    <link rel="manifest" href="{base_path}manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="{base_path}pwa/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="{base_path}pwa/icons/icon-192.png">
+    <link rel="stylesheet" href="{base_path}pwa/startup.v1.css">
+    <title>{{%title%}}</title>
+    {{%favicon%}}
+    {{%css%}}
+</head>
+<body>
+    {{%app_entry%}}
+    <footer>
+        {{%config%}}
+        {{%scripts%}}
+        {{%renderer%}}
+    </footer>
+    <script defer src="{base_path}pwa/startup.v1.js"></script>
+</body>
+</html>"""
+
+    @app.server.get(f"{route_prefix}/health/live")
+    def health_live():
+        return jsonify({"service": "velacare-dashboard", "status": "live"}), 200
+
+    @app.server.get(f"{route_prefix}/health/ready")
+    def health_ready():
+        if not readiness["initialized"]:
+            dashboard_state = "initializing"
+        elif readiness["initialization_error"]:
+            dashboard_state = "unavailable"
+        else:
+            dashboard_state = "ready"
+
+        accessible = root.is_dir() and os.access(root, os.R_OK | os.X_OK)
+        for directory in (root / "data", root / "analysis", root / "analysis" / "experiments"):
+            if directory.exists() and (not directory.is_dir() or not os.access(directory, os.R_OK | os.X_OK)):
+                accessible = False
+        if not accessible and dashboard_state == "ready":
+            dashboard_state = "unavailable"
+        http_status = 200 if dashboard_state == "ready" else 503
+
+        try:
+            activation = provider.get_status({}).as_dict()
+        except Exception:
+            activation = ActivationStatus(
+                ActivationState.ERROR,
+                "Workspace status provider failed.",
+            ).as_dict()
+        payload = {
+            "service": "velacare-dashboard",
+            "status": dashboard_state,
+            "dashboard": {"status": dashboard_state},
+            "local_workspace": {
+                "status": "available" if accessible else "unavailable",
+                "experiments": readiness.get("experiments_status", "unknown"),
+                "dataset": readiness.get("dataset_status", "unknown"),
+            },
+            "activation": activation,
+        }
+        return jsonify(payload), http_status
+
+    @app.server.get(f"{route_prefix}/manifest.webmanifest")
+    def pwa_manifest():
+        response = make_response(send_file(pwa_dir / "manifest.webmanifest", mimetype="application/manifest+json"))
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.server.get(f"{route_prefix}/service-worker.js")
+    def pwa_service_worker():
+        response = make_response(send_file(pwa_dir / "service-worker.js", mimetype="application/javascript"))
+        response.headers["Service-Worker-Allowed"] = base_path
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.server.get(f"{route_prefix}/offline-shell.html")
+    def pwa_offline_shell():
+        shell = (pwa_dir / "offline-shell.html").read_text(encoding="utf-8")
+        response = make_response(shell.replace("__VELACARE_BASE_PATH__", base_path))
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.server.get(f"{route_prefix}/pwa/<path:filename>")
+    def pwa_public_asset(filename: str):
+        response = make_response(send_from_directory(pwa_dir, filename, conditional=True))
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+    @app.server.post(f"{route_prefix}/activation/start")
+    def mock_activation_start():
+        if not isinstance(provider, MockActivationProvider):
+            return jsonify({"accepted": False, "status": "unavailable", "detail": "Activation demo is disabled."}), 404
+        key = request.headers.get("Idempotency-Key", "")
+        if not key or len(key) > 128:
+            return jsonify({"accepted": False, "status": "error", "detail": "A valid idempotency key is required."}), 400
+        result = provider.request_start({}, key)
+        return jsonify(result.as_dict()), 202 if result.accepted else 409
 
     @app.callback(Output("generation-click-store", "data"), Input({"type": "history-heatmap", "index": ALL}, "clickData"), prevent_initial_call=True)
     def capture_history_click(click_events: list[dict[str, Any] | None]) -> dict[str, int] | None:
