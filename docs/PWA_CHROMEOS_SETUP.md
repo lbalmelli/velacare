@@ -64,6 +64,32 @@ For the supported local development URL, use `http://localhost:8050/`. Service w
 
 The versioned service worker caches only the branded startup shell, its CSS/JavaScript and icons. It never caches health responses, dashboard callbacks, research files, results, credentials or authenticated responses. If a shell was already cached, it can show a reconnection screen with Retry while the dashboard is down. First use while the dashboard is stopped cannot fetch the app or its shell, and the cached shell cannot analyze data offline.
 
+## Verify the PWA
+
+This check verifies installation metadata, online startup, the cached offline shell, and recovery after the dashboard returns. Use `localhost` so Chrome treats the local site as a secure context for service workers.
+
+1. Start the dashboard and leave it running:
+
+   ```bash
+   cd ~/velacare
+   ./run-dashboard --workspace ./agentic-space --host 127.0.0.1 --port 8050
+   ```
+
+2. In Chrome, open `http://localhost:8050/`. Wait for the research dashboard to appear. In DevTools > **Application**, confirm that the manifest loads and the service worker is active. Under **Cache Storage**, confirm `velacare-public-startup-v1` contains only the offline shell, startup CSS/JavaScript, and two icons.
+
+3. Install VelaCare from Chrome's **Install app** option. Open the installed app and confirm it reaches the dashboard while the server is running.
+
+4. Stop the dashboard with **Ctrl+C** in its terminal, then reload the installed app. The cached startup screen should show **VelaCare is unavailable** and a **Retry** button. This requires the app to have been opened online at least once so the service worker has cached the shell.
+
+5. Restart the dashboard with the command from step 1, then select **Retry**. The dashboard should load again. The health routes can also be checked from a terminal:
+
+   ```bash
+   curl -fsS http://localhost:8050/health/live
+   curl -i http://localhost:8050/health/ready
+   ```
+
+The cached screen is only a reconnection surface; experiment views require the running dashboard and workspace. For Chromebook-specific Linux app cold-start verification, follow the manual check at the end of this guide.
+
 For a production cold-start experience, a separately reachable bootstrap origin or gateway must remain available while the workspace is stopped. It can host the shell and, once a real activation service exists, mediate status and start requests. This repository does not provision that always-on service.
 
 ## Health and workspace activation

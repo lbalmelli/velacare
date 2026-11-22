@@ -138,6 +138,6 @@ The Coding Agent, Data Explorer and Report Agent share the **same `./agentic-spa
 
 ### Launch on Chromebook / install as a PWA
 
-For a ChromeOS Linux app shortcut that starts Crostini's dashboard process and opens the host browser, or to install the browser app, follow the [ChromeOS and PWA setup guide](docs/PWA_CHROMEOS_SETUP.md). The [dashboard setup guide](docs/DASHBOARD_SETUP.md) covers normal development use. The Linux shortcut can start the local backend; a Chrome-installed PWA cannot start Crostini by itself.
+For a ChromeOS Linux app shortcut that starts Crostini's dashboard process, or to install and test the PWA's offline recovery screen, follow the [ChromeOS and PWA setup guide](docs/PWA_CHROMEOS_SETUP.md). The [dashboard setup guide](docs/DASHBOARD_SETUP.md) covers normal development use. The Linux shortcut can start the local backend; a Chrome-installed PWA cannot start Crostini by itself.
 
 <!-- VELACARE_DASHBOARD_DOCS_END -->
