@@ -222,5 +222,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Local shared workspace: dataset cache, GA experiment artifacts, and reports
-/agentic-space/
+# Keep the local workspace directory in fresh checkouts, but ignore its runtime data.
+/agentic-space/*
+!/agentic-space/.gitkeep
