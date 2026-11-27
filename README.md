@@ -14,6 +14,15 @@ Python 3.11 or newer is required. On the first invocation, the root launcher cre
 ./run-demo --generations 40 --population 60 --seed 42
 ```
 
+For a Bash shortcut, source the repository helper and pass the generation count:
+
+```bash
+source "$HOME/velacare/scripts/run-demo-alias.bash"
+run 40
+```
+
+To enable `run` in every interactive Bash session, put that `source` line in `~/.bash_aliases`. The helper uses the repository it was sourced from; set `VELACARE_REPO` to override it.
+
 Other CLI options:
 
 ```text
