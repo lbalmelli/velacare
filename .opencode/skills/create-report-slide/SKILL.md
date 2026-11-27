@@ -5,7 +5,7 @@ description: Create or revise VelaCare-branded PowerPoint research reports or in
 
 # Create a branded research presentation
 
-1. Resolve the workspace root: requested `--workspace`, else `./agentic-space` for local development, else `/agentic-space` in deployment.
+1. Resolve the workspace root: use a user-specified `--workspace` first; otherwise use `./agentic-space` in a repository-local run or `/agentic-space` in SecurSpaces deployment. This workspace is the source of the report's experiment data. Find the selected run under `<workspace>/analysis/experiments/<run_id>/`; dataset and provenance files, when needed, are under `<workspace>/data/`. Do not look for generated report data in the source package or invent a substitute if the workspace or run is missing.
 2. Read `brand/BRAND_GUIDELINES.md`; use `brand/velacare_logo.png` and `brand/VelaCare_Research_Reporting_Template.pptx`. If runtime brand folder is not provisioned, use the *repository's* `brand/` assets while reading original experiment files from their workspace path.
 3. Read the exact selected run's `run_manifest.json`, `generation_history.csv`, `candidate_history.jsonl`, `best_candidates.json`, and `model_metrics.json`. Maintain source run ID and schema version.
 4. Use `interpret-medical-research` to review source integrity, metric definitions, limitations and labeling BEFORE drafting any conclusion.
