@@ -14,6 +14,8 @@ The Data Explorer is a Plotly Dash application inside the existing `velacare` Py
 - Current runs: `./agentic-space/analysis/experiments/`.
 - Visual references: `assets/data-explorer-reference.png`, `assets/feature-evolution-reference.png`.
 
+The repository includes an empty `agentic-space/` placeholder so the dashboard can be started before the first simulation. Generated datasets, experiment runs, and reports under that directory stay out of Git. Before any run exists, the dashboard shows an empty research workspace; `./run-demo` populates the shared workspace when you start a simulation.
+
 ## Prepare environment
 
 Python 3.11+ and `uv` are required. The dashboard and report packages are optional extras in the existing project; they use the repository's existing `.venv` and `uv.lock`.
